@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAudio } from "@/components/audio-provider"
+import { BarcodeScanner } from "@/components/barcode-scanner"
 
 // Mock product data
 const mockProducts = [
@@ -57,6 +58,8 @@ export function InventorySyncPage() {
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; size: number; color: string }>>(
     [],
   )
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
+  const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -158,6 +161,25 @@ export function InventorySyncPage() {
       ),
     )
     playSound("click")
+  }
+
+  // Handle barcode scan result
+  const handleBarcodeScan = (barcode: string) => {
+    setScannedBarcode(barcode)
+    setShowBarcodeScanner(false)
+    
+    // Find product by barcode
+    const product = mockProducts.find(p => p.barcode === barcode)
+    
+    if (product) {
+      setScannedProduct(product)
+      setScanResult("success")
+      playSound("success")
+      setShowParticles(true)
+    } else {
+      setScanResult("error")
+      playSound("error")
+    }
   }
 
   const renderScanArea = () => {
@@ -268,43 +290,22 @@ export function InventorySyncPage() {
     } else if (scanMode === "camera") {
       return (
         <div className="relative w-full max-w-md mx-auto">
-          <div className="relative w-full h-64 bg-black rounded-lg overflow-hidden">
-            <video ref={videoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
-            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
-
-            {/* Scan overlay */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-3/4 h-1/2 border-2 border-white/50 rounded-lg">
-                {isScanning && (
-                  <motion.div
-                    animate={{
-                      y: [-50, 50, -50],
-                      opacity: [0.2, 1, 0.2],
-                    }}
-                    transition={{
-                      repeat: Number.POSITIVE_INFINITY,
-                      duration: 2,
-                      ease: "linear",
-                    }}
-                    className="h-0.5 w-full bg-blue-500 absolute left-0"
-                  />
-                )}
+          {showBarcodeScanner ? (
+            <BarcodeScanner 
+              onScan={handleBarcodeScan}
+              onClose={() => setShowBarcodeScanner(false)}
+            />
+          ) : (
+            <div className="relative w-full h-64 bg-black rounded-lg overflow-hidden flex items-center justify-center">
+              <div className="text-center">
+                <Camera className="h-12 w-12 text-white/70 mx-auto mb-4" />
+                <p className="text-white/70 mb-4">Use camera to scan product barcodes</p>
+                <Button onClick={() => setShowBarcodeScanner(true)}>
+                  Open Camera Scanner
+                </Button>
               </div>
             </div>
-
-            {/* Controls overlay */}
-            <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-              {!isScanning ? (
-                <Button onClick={startScanning} className="bg-white/90 text-blue-600 hover:bg-white">
-                  Capture
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={resetScan} className="bg-white/90 text-red-600 hover:bg-white">
-                  Cancel
-                </Button>
-              )}
-            </div>
-          </div>
+          )}
 
           {scanResult && (
             <motion.div
@@ -383,6 +384,16 @@ export function InventorySyncPage() {
                 </div>
               )}
             </motion.div>
+          )}
+
+          {/* Display the scanned barcode in text format */}
+          {scannedBarcode && (
+            <div className="mt-4 p-4 bg-gray-100 rounded-lg">
+              <h3 className="font-medium text-sm text-gray-700 mb-2">Scanned Barcode:</h3>
+              <div className="bg-white p-3 rounded border text-center font-mono">
+                {scannedBarcode}
+              </div>
+            </div>
           )}
         </div>
       )
