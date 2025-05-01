@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAudio } from "@/components/audio-provider"
-import { BarcodeScanner } from "@/components/barcode-scanner"
+import { BrowserMultiFormatReader, Result } from "@zxing/library"
 
 // Mock product data
 const mockProducts = [
@@ -58,12 +58,13 @@ export function InventorySyncPage() {
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; size: number; color: string }>>(
     [],
   )
-  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false)
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
+  const [cameraReady, setCameraReady] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const scanAreaRef = useRef<HTMLDivElement>(null)
+  const barcodeReaderRef = useRef<BrowserMultiFormatReader | null>(null)
 
   // Filter products based on search query
   useEffect(() => {
@@ -78,33 +79,89 @@ export function InventorySyncPage() {
     }
   }, [searchQuery])
 
+  // Initialize and clean up barcode reader
+  useEffect(() => {
+    if (scanMode === "camera") {
+      barcodeReaderRef.current = new BrowserMultiFormatReader()
+      return () => {
+        if (barcodeReaderRef.current) {
+          barcodeReaderRef.current.reset()
+          barcodeReaderRef.current = null
+        }
+      }
+    }
+  }, [scanMode])
+
   // Handle camera access
   useEffect(() => {
-    if (scanMode === "camera" && !isScanning) {
+    if (scanMode === "camera" && !scanResult) {
       const startCamera = async () => {
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
-          })
+          if (!barcodeReaderRef.current) return
+          
+          // Get video devices
+          const videoDevices = await barcodeReaderRef.current.listVideoInputDevices()
+          
+          // Find back camera if available (usually the last device or labeled with "back")
+          let selectedDeviceId = videoDevices[0]?.deviceId
+          const backCamera = videoDevices.find(device => 
+            device.label.toLowerCase().includes('back') || 
+            device.label.toLowerCase().includes('rear')
+          )
+          
+          if (backCamera) {
+            selectedDeviceId = backCamera.deviceId
+          } else if (videoDevices.length > 1) {
+            // If no explicitly labeled back camera but multiple cameras exist,
+            // try using the last one which is often the back camera
+            selectedDeviceId = videoDevices[videoDevices.length - 1].deviceId
+          }
 
           if (videoRef.current) {
-            videoRef.current.srcObject = stream
+            setIsScanning(true)
+            setCameraReady(true)
+            
+            // Start continuous scanning
+            await barcodeReaderRef.current.decodeFromConstraints(
+              {
+                video: { 
+                  deviceId: selectedDeviceId,
+                  facingMode: "environment",
+                  width: { ideal: 1280 },
+                  height: { ideal: 720 }
+                }
+              },
+              videoRef.current,
+              (result: Result | null, error: Error | undefined) => {
+                if (result && isScanning) {
+                  const barcode = result.getText()
+                  handleBarcodeScan(barcode)
+                }
+                
+                if (error && error.name !== "NotFoundException") {
+                  console.error("Scanner error:", error)
+                }
+              }
+            )
           }
         } catch (err) {
           console.error("Error accessing camera:", err)
+          setIsScanning(false)
+          setCameraReady(false)
         }
       }
 
       startCamera()
 
       return () => {
-        const stream = videoRef.current?.srcObject as MediaStream
-        if (stream) {
-          stream.getTracks().forEach((track) => track.stop())
+        if (barcodeReaderRef.current) {
+          barcodeReaderRef.current.reset()
+          setIsScanning(false)
+          setCameraReady(false)
         }
       }
     }
-  }, [scanMode])
+  }, [scanMode, scanResult])
 
   // Generate particles for success animation
   useEffect(() => {
@@ -150,7 +207,8 @@ export function InventorySyncPage() {
   const resetScan = () => {
     setScanResult(null)
     setScannedProduct(null)
-    setIsScanning(false)
+    setScannedBarcode(null)
+    setIsScanning(true)
     playSound("click")
   }
 
@@ -165,8 +223,10 @@ export function InventorySyncPage() {
 
   // Handle barcode scan result
   const handleBarcodeScan = (barcode: string) => {
+    if (!barcode || barcode === scannedBarcode) return
+    
     setScannedBarcode(barcode)
-    setShowBarcodeScanner(false)
+    setIsScanning(false)
     
     // Find product by barcode
     const product = mockProducts.find(p => p.barcode === barcode)
@@ -290,22 +350,61 @@ export function InventorySyncPage() {
     } else if (scanMode === "camera") {
       return (
         <div className="relative w-full max-w-md mx-auto">
-          {showBarcodeScanner ? (
-            <BarcodeScanner 
-              onScan={handleBarcodeScan}
-              onClose={() => setShowBarcodeScanner(false)}
+          <div className="relative w-full h-64 bg-black rounded-lg overflow-hidden">
+            <video 
+              ref={videoRef} 
+              autoPlay 
+              playsInline 
+              className="absolute inset-0 w-full h-full object-cover"
             />
-          ) : (
-            <div className="relative w-full h-64 bg-black rounded-lg overflow-hidden flex items-center justify-center">
-              <div className="text-center">
-                <Camera className="h-12 w-12 text-white/70 mx-auto mb-4" />
-                <p className="text-white/70 mb-4">Use camera to scan product barcodes</p>
-                <Button onClick={() => setShowBarcodeScanner(true)}>
-                  Open Camera Scanner
-                </Button>
+
+            {/* Scan overlay with guide */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-3/4 h-1/2 border-2 border-white/50 rounded-lg flex items-center justify-center">
+                {isScanning && (
+                  <motion.div
+                    animate={{
+                      y: [-50, 50, -50],
+                      opacity: [0.2, 1, 0.2],
+                    }}
+                    transition={{
+                      repeat: Number.POSITIVE_INFINITY,
+                      duration: 2,
+                      ease: "linear",
+                    }}
+                    className="h-0.5 w-full bg-blue-500 absolute left-0"
+                  />
+                )}
+                {!cameraReady && (
+                  <div className="text-center text-white/80">
+                    <Camera className="h-8 w-8 mx-auto mb-2" />
+                    <p>Accessing camera...</p>
+                  </div>
+                )}
               </div>
             </div>
-          )}
+
+            {/* Scanning indicator */}
+            {isScanning && cameraReady && (
+              <div className="absolute top-2 left-2 bg-blue-500/70 text-white px-2 py-1 rounded-full text-xs flex items-center">
+                <span className="animate-pulse mr-1 h-2 w-2 bg-white inline-block rounded-full"></span>
+                Scanning...
+              </div>
+            )}
+
+            {/* Controls overlay */}
+            <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+              {!scanResult && (
+                <Button
+                  variant={isScanning ? "outline" : "default"}
+                  onClick={() => isScanning ? setIsScanning(false) : setIsScanning(true)}
+                  className={isScanning ? "bg-white/90 text-red-600 hover:bg-white" : "bg-white/90 text-blue-600 hover:bg-white"}
+                >
+                  {isScanning ? "Pause Scanning" : "Resume Scanning"}
+                </Button>
+              )}
+            </div>
+          </div>
 
           {scanResult && (
             <motion.div
