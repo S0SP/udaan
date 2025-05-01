@@ -83,6 +83,7 @@ export function InventorySyncPage() {
   useEffect(() => {
     if (scanMode === "camera") {
       barcodeReaderRef.current = new BrowserMultiFormatReader()
+      setIsScanning(true) // Start scanning immediately with stable state
       return () => {
         if (barcodeReaderRef.current) {
           barcodeReaderRef.current.reset()
@@ -133,7 +134,6 @@ export function InventorySyncPage() {
           }
 
           if (videoRef.current) {
-            setIsScanning(true)
             setCameraReady(true)
             console.log("Starting continuous scanning with device:", selectedDeviceId);
             
@@ -145,24 +145,15 @@ export function InventorySyncPage() {
                   facingMode: "environment",
                   width: { ideal: 1280 },
                   height: { ideal: 720 },
-                  // Increase frame rate for better scanning
                   frameRate: { ideal: 30 }
                 }
               },
               videoRef.current,
               (result: Result | null, error: Error | undefined) => {
-                if (result) {
-                  console.log("Scan result:", result);
+                if (result && isScanning && !scanResult) {
                   const barcode = result.getText()
                   console.log("Detected barcode:", barcode);
-                  // Only process if we're actively scanning
-                  if (isScanning) {
-                    handleBarcodeScan(barcode)
-                  }
-                }
-                
-                if (error && error.name !== "NotFoundException") {
-                  console.error("Scanner error:", error)
+                  handleBarcodeScan(barcode)
                 }
               }
             )
@@ -178,7 +169,6 @@ export function InventorySyncPage() {
 
       return () => {
         if (barcodeReaderRef.current) {
-          console.log("Resetting barcode reader");
           barcodeReaderRef.current.reset()
           setIsScanning(false)
           setCameraReady(false)
@@ -245,13 +235,11 @@ export function InventorySyncPage() {
     playSound("click")
   }
 
-  // Handle barcode scan result with better validation and mock support
   const handleBarcodeScan = (barcode: string) => {
     if (!barcode || barcode === scannedBarcode) return
     
     console.log("Processing scanned barcode:", barcode);
     setScannedBarcode(barcode)
-    setIsScanning(false)
     
     // Find product by barcode
     const product = mockProducts.find(p => p.barcode === barcode)
@@ -260,23 +248,18 @@ export function InventorySyncPage() {
       console.log("Found matching product:", product.name);
       setScannedProduct(product)
       setScanResult("success")
+      setIsScanning(false) // Stop scanning after success
       playSound("success")
       setShowParticles(true)
     } else {
       console.log("No matching product found for barcode:", barcode);
-      setScanResult("error")
+      // Don't stop scanning if product not found, let them try again
       playSound("error")
-    }
-  }
-
-  // For testing purposes - allow manual barcode entry if scanning fails
-  const manualBarcodeEntry = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const barcode = formData.get('manualBarcode') as string;
-    
-    if (barcode && barcode.trim()) {
-      handleBarcodeScan(barcode.trim());
+      // Show temporary error toast instead of changing the scan state
+      setTimeout(() => {
+        // Clear the error after 2 seconds
+        setScannedBarcode(null)
+      }, 2000)
     }
   }
 
@@ -432,13 +415,20 @@ export function InventorySyncPage() {
 
             {/* Controls overlay */}
             <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-              {!scanResult && (
+              {!scanResult ? (
                 <Button
                   variant={isScanning ? "outline" : "default"}
-                  onClick={() => isScanning ? setIsScanning(false) : setIsScanning(true)}
+                  onClick={() => setIsScanning(!isScanning)}
                   className={isScanning ? "bg-white/90 text-red-600 hover:bg-white" : "bg-white/90 text-blue-600 hover:bg-white"}
                 >
                   {isScanning ? "Pause Scanning" : "Resume Scanning"}
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => resetScan()}
+                  className="bg-white/90 text-blue-600 hover:bg-white"
+                >
+                  Scan New Product
                 </Button>
               )}
             </div>
@@ -530,24 +520,6 @@ export function InventorySyncPage() {
               <div className="bg-white p-3 rounded border text-center font-mono">
                 {scannedBarcode}
               </div>
-            </div>
-          )}
-
-          {/* Manual barcode entry for testing */}
-          {!scanResult && (
-            <div className="mt-2">
-              <form onSubmit={manualBarcodeEntry} className="flex gap-2">
-                <Input 
-                  name="manualBarcode" 
-                  type="text" 
-                  placeholder="Enter barcode manually..." 
-                  className="flex-1"
-                />
-                <Button type="submit" size="sm">Test</Button>
-              </form>
-              <p className="text-xs text-gray-500 mt-1">
-                For testing: try 8901234567890, 8901234567891, etc.
-              </p>
             </div>
           )}
         </div>
