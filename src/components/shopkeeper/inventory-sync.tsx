@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAudio } from "@/components/audio-provider"
-import { BrowserMultiFormatReader, Result } from "@zxing/library"
+import { BrowserMultiFormatReader, Result, BarcodeFormat, DecodeHintType } from "@zxing/library"
 
 // Mock product data
 const mockProducts = [
@@ -99,10 +99,25 @@ export function InventorySyncPage() {
         try {
           if (!barcodeReaderRef.current) return
           
+          // Configure hints for better recognition
+          const hints = new Map();
+          hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+            BarcodeFormat.EAN_13,
+            BarcodeFormat.EAN_8, 
+            BarcodeFormat.CODE_39,
+            BarcodeFormat.CODE_128,
+            BarcodeFormat.QR_CODE,
+            BarcodeFormat.UPC_A,
+            BarcodeFormat.UPC_E
+          ]);
+          hints.set(DecodeHintType.TRY_HARDER, true);
+          barcodeReaderRef.current.hints = hints;
+          
           // Get video devices
           const videoDevices = await barcodeReaderRef.current.listVideoInputDevices()
+          console.log("Available video devices:", videoDevices);
           
-          // Find back camera if available (usually the last device or labeled with "back")
+          // Find back camera if available
           let selectedDeviceId = videoDevices[0]?.deviceId
           const backCamera = videoDevices.find(device => 
             device.label.toLowerCase().includes('back') || 
@@ -110,32 +125,40 @@ export function InventorySyncPage() {
           )
           
           if (backCamera) {
+            console.log("Using back camera:", backCamera.label);
             selectedDeviceId = backCamera.deviceId
           } else if (videoDevices.length > 1) {
-            // If no explicitly labeled back camera but multiple cameras exist,
-            // try using the last one which is often the back camera
+            console.log("Using last camera device as back camera");
             selectedDeviceId = videoDevices[videoDevices.length - 1].deviceId
           }
 
           if (videoRef.current) {
             setIsScanning(true)
             setCameraReady(true)
+            console.log("Starting continuous scanning with device:", selectedDeviceId);
             
-            // Start continuous scanning
+            // Start continuous scanning with improved settings
             await barcodeReaderRef.current.decodeFromConstraints(
               {
                 video: { 
                   deviceId: selectedDeviceId,
                   facingMode: "environment",
                   width: { ideal: 1280 },
-                  height: { ideal: 720 }
+                  height: { ideal: 720 },
+                  // Increase frame rate for better scanning
+                  frameRate: { ideal: 30 }
                 }
               },
               videoRef.current,
               (result: Result | null, error: Error | undefined) => {
-                if (result && isScanning) {
+                if (result) {
+                  console.log("Scan result:", result);
                   const barcode = result.getText()
-                  handleBarcodeScan(barcode)
+                  console.log("Detected barcode:", barcode);
+                  // Only process if we're actively scanning
+                  if (isScanning) {
+                    handleBarcodeScan(barcode)
+                  }
                 }
                 
                 if (error && error.name !== "NotFoundException") {
@@ -155,13 +178,14 @@ export function InventorySyncPage() {
 
       return () => {
         if (barcodeReaderRef.current) {
+          console.log("Resetting barcode reader");
           barcodeReaderRef.current.reset()
           setIsScanning(false)
           setCameraReady(false)
         }
       }
     }
-  }, [scanMode, scanResult])
+  }, [scanMode, scanResult, isScanning])
 
   // Generate particles for success animation
   useEffect(() => {
@@ -221,10 +245,11 @@ export function InventorySyncPage() {
     playSound("click")
   }
 
-  // Handle barcode scan result
+  // Handle barcode scan result with better validation and mock support
   const handleBarcodeScan = (barcode: string) => {
     if (!barcode || barcode === scannedBarcode) return
     
+    console.log("Processing scanned barcode:", barcode);
     setScannedBarcode(barcode)
     setIsScanning(false)
     
@@ -232,13 +257,26 @@ export function InventorySyncPage() {
     const product = mockProducts.find(p => p.barcode === barcode)
     
     if (product) {
+      console.log("Found matching product:", product.name);
       setScannedProduct(product)
       setScanResult("success")
       playSound("success")
       setShowParticles(true)
     } else {
+      console.log("No matching product found for barcode:", barcode);
       setScanResult("error")
       playSound("error")
+    }
+  }
+
+  // For testing purposes - allow manual barcode entry if scanning fails
+  const manualBarcodeEntry = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const barcode = formData.get('manualBarcode') as string;
+    
+    if (barcode && barcode.trim()) {
+      handleBarcodeScan(barcode.trim());
     }
   }
 
@@ -492,6 +530,24 @@ export function InventorySyncPage() {
               <div className="bg-white p-3 rounded border text-center font-mono">
                 {scannedBarcode}
               </div>
+            </div>
+          )}
+
+          {/* Manual barcode entry for testing */}
+          {!scanResult && (
+            <div className="mt-2">
+              <form onSubmit={manualBarcodeEntry} className="flex gap-2">
+                <Input 
+                  name="manualBarcode" 
+                  type="text" 
+                  placeholder="Enter barcode manually..." 
+                  className="flex-1"
+                />
+                <Button type="submit" size="sm">Test</Button>
+              </form>
+              <p className="text-xs text-gray-500 mt-1">
+                For testing: try 8901234567890, 8901234567891, etc.
+              </p>
             </div>
           )}
         </div>
