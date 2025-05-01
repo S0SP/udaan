@@ -289,50 +289,48 @@ export function InventorySyncPage() {
             </div>
           ) : scanResult ? (
             <div className="text-center p-4">
-              {scanResult === "success" ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-white p-4 rounded-lg shadow-md"
+              >
                 <div className="space-y-4">
                   <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
                   <p className="text-green-600 font-medium text-lg">Scan Successful!</p>
                   {scannedProduct && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="bg-white p-4 rounded-lg shadow-md"
-                    >
-                      <div className="flex items-center gap-4">
-                        <Image
-                          src={scannedProduct.image || "/placeholder.svg"}
-                          alt={scannedProduct.name}
-                          width={60}
-                          height={60}
-                          className="rounded-md"
-                        />
-                        <div className="text-left">
-                          <h3 className="font-medium">{scannedProduct.name}</h3>
-                          <p className="text-sm text-gray-500">Barcode: {scannedProduct.barcode}</p>
-                          <p className="text-sm">Price: ₹{scannedProduct.price}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 w-7 p-0"
-                              onClick={() => updateStock(scannedProduct.id, -1)}
-                            >
-                              <Minus className="h-3 w-3" />
-                            </Button>
-                            <span className="text-sm font-medium">{scannedProduct.stock}</span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 w-7 p-0"
-                              onClick={() => updateStock(scannedProduct.id, 1)}
-                            >
-                              <Plus className="h-3 w-3" />
-                            </Button>
-                          </div>
+                    <div className="flex items-center gap-4">
+                      <Image
+                        src={scannedProduct.image || "/placeholder.svg"}
+                        alt={scannedProduct.name}
+                        width={60}
+                        height={60}
+                        className="rounded-md"
+                      />
+                      <div className="text-left">
+                        <h3 className="font-medium">{scannedProduct.name}</h3>
+                        <p className="text-sm text-gray-500">Barcode: {scannedProduct.barcode}</p>
+                        <p className="text-sm">Price: ₹{scannedProduct.price}</p>
+                        <div className="flex items-center gap-2 mt-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 w-7 p-0"
+                            onClick={() => updateStock(scannedProduct.id, -1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <span className="text-sm font-medium">{scannedProduct.stock}</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 w-7 p-0"
+                            onClick={() => updateStock(scannedProduct.id, 1)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
-                    </motion.div>
+                    </div>
                   )}
                   <div className="flex gap-2 justify-center">
                     <Button variant="outline" onClick={resetScan}>
@@ -348,16 +346,7 @@ export function InventorySyncPage() {
                     </Button>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <XCircle className="h-16 w-16 text-red-500 mx-auto" />
-                  <p className="text-red-600 font-medium text-lg">Scan Failed</p>
-                  <p className="text-gray-600">Please try again</p>
-                  <Button variant="outline" onClick={resetScan}>
-                    Try Again
-                  </Button>
-                </div>
-              )}
+              </motion.div>
             </div>
           ) : (
             <div className="text-center p-4">
@@ -440,76 +429,63 @@ export function InventorySyncPage() {
               animate={{ opacity: 1, y: 0 }}
               className="mt-4 p-4 bg-white rounded-lg shadow-md"
             >
-              {scanResult === "success" ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    <p className="text-green-600 font-medium">Scan Successful!</p>
-                  </div>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <p className="text-green-600 font-medium">Scan Successful!</p>
+                </div>
 
-                  {scannedProduct && (
-                    <div className="flex items-center gap-4">
-                      <Image
-                        src={scannedProduct.image || "/placeholder.svg"}
-                        alt={scannedProduct.name}
-                        width={60}
-                        height={60}
-                        className="rounded-md"
-                      />
-                      <div>
-                        <h3 className="font-medium">{scannedProduct.name}</h3>
-                        <p className="text-sm text-gray-500">Barcode: {scannedProduct.barcode}</p>
-                        <p className="text-sm">Price: ₹{scannedProduct.price}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 w-7 p-0"
-                            onClick={() => updateStock(scannedProduct.id, -1)}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="text-sm font-medium">{scannedProduct.stock}</span>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 w-7 p-0"
-                            onClick={() => updateStock(scannedProduct.id, 1)}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                        </div>
+                {scannedProduct && (
+                  <div className="flex items-center gap-4">
+                    <Image
+                      src={scannedProduct.image || "/placeholder.svg"}
+                      alt={scannedProduct.name}
+                      width={60}
+                      height={60}
+                      className="rounded-md"
+                    />
+                    <div>
+                      <h3 className="font-medium">{scannedProduct.name}</h3>
+                      <p className="text-sm text-gray-500">Barcode: {scannedProduct.barcode}</p>
+                      <p className="text-sm">Price: ₹{scannedProduct.price}</p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 w-7 p-0"
+                          onClick={() => updateStock(scannedProduct.id, -1)}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="text-sm font-medium">{scannedProduct.stock}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 w-7 p-0"
+                          onClick={() => updateStock(scannedProduct.id, 1)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
                       </div>
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={resetScan} className="flex-1">
-                      Scan Again
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        playSound("success")
-                        resetScan()
-                      }}
-                      className="flex-1"
-                    >
-                      Save
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <XCircle className="h-5 w-5 text-red-500" />
-                    <p className="text-red-600 font-medium">Scan Failed</p>
-                  </div>
-                  <p className="text-gray-600">Please try again</p>
-                  <Button variant="outline" onClick={resetScan} className="w-full">
-                    Try Again
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={resetScan} className="flex-1">
+                    Scan Another Product
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      playSound("success")
+                      resetScan()
+                    }}
+                    className="flex-1"
+                  >
+                    Save
                   </Button>
                 </div>
-              )}
+              </div>
             </motion.div>
           )}
 
