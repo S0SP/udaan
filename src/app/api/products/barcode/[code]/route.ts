@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
+// Remove unused import for NextApiRequest, NextApiResponse
+// import { NextApiRequest, NextApiResponse } from "next"
 
 // Mock database of products with barcodes
 const productDatabase = new Map([
@@ -30,8 +32,10 @@ const productDatabase = new Map([
 
 export async function GET(
   request: NextRequest,
+  // Correct the second argument to receive route parameters
   { params }: { params: { code: string } }
 ) {
+  // Access the barcode from the params object
   const barcode = params.code
 
   // In a real application, you would query your database here
