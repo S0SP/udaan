@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 
 // Mock database of products with barcodes
 const productDatabase = new Map([
@@ -29,10 +29,10 @@ const productDatabase = new Map([
 ])
 
 export async function GET(
-  request: Request,
-  context: { params: { code: string } }
+  request: NextRequest,
+  { params }: { params: { code: string } }
 ) {
-  const barcode = context.params.code
+  const barcode = params.code
 
   // In a real application, you would query your database here
   const product = productDatabase.get(barcode)
