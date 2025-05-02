@@ -40,11 +40,6 @@ const initialCartItems = [
 export function CartPage() {
   const { playSound } = useAudio()
   const [cartItems, setCartItems] = useState(initialCartItems)
-  const [isLoaded, setIsLoaded] = useState(false)
-
-  useEffect(() => {
-    setIsLoaded(true)
-  }, [])
 
   const updateQuantity = (id: string, change: number) => {
     setCartItems((prevItems) =>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Search, X, Mic, MicOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -10,15 +10,9 @@ import { Breadcrumb } from "@/components/breadcrumb"
 import { VoiceInput } from "./voice-input"
 import { useCart } from "@/hooks/use-cart"
 import { useToast } from "@/components/ui/use-toast"
+import Image from "next/image"
 
-// Add TypeScript types for SpeechRecognition
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition
-    webkitSpeechRecognition: typeof SpeechRecognition
-  }
-}
-
+// Define SpeechRecognition types
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList
 }
@@ -45,30 +39,23 @@ interface SpeechRecognitionAlternative {
   confidence: number
 }
 
-class SpeechRecognition extends EventTarget {
+// Define types without declaring interfaces in global scope
+interface ISpeechRecognition {
   continuous: boolean
   interimResults: boolean
   lang: string
   onresult: ((event: SpeechRecognitionEvent) => void) | null
   onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
   onend: (() => void) | null
+  start(): void
+  stop(): void
+}
 
-  constructor() {
-    super()
-    this.continuous = false
-    this.interimResults = false
-    this.lang = "en-US"
-    this.onresult = null
-    this.onerror = null
-    this.onend = null
-  }
-
-  start(): void {
-    // Implementation will be provided by the browser
-  }
-
-  stop(): void {
-    // Implementation will be provided by the browser
+// Simplify the global declaration to avoid type conflicts
+declare global {
+  interface Window {
+    SpeechRecognition: any
+    webkitSpeechRecognition: any
   }
 }
 
@@ -179,12 +166,10 @@ export function SearchPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<typeof allProducts>([])
   const [recentSearches, setRecentSearches] = useState<string[]>([])
-  const [isLoaded, setIsLoaded] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const { toast } = useToast()
   
   useEffect(() => {
-    setIsLoaded(true)
     // Load recent searches from localStorage in a real app
     setRecentSearches(["Milk", "Bread", "Paracetamol"])
   }, [])
@@ -448,10 +433,12 @@ export function SearchPage() {
                 className="p-4 border rounded-lg hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center space-x-4">
-                  <img
+                  <Image
                     src={product.image}
                     alt={product.name}
-                    className="w-16 h-16 object-cover rounded"
+                    width={64}
+                    height={64}
+                    className="object-cover rounded"
                   />
                   <div>
                     <h3 className="font-medium">{product.name}</h3>

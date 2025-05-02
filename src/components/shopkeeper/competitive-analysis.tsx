@@ -51,7 +51,6 @@ const supplyShortages = [
 
 export function CompetitiveAnalysis() {
   const { playSound } = useAudio()
-  const [activeTab, setActiveTab] = useState("daily")
   const [isLoaded, setIsLoaded] = useState(false)
 
   useEffect(() => {
@@ -218,7 +217,6 @@ export function CompetitiveAnalysis() {
       <Tabs
         defaultValue="daily"
         onValueChange={(value) => {
-          setActiveTab(value)
           playSound("click")
         }}
       >

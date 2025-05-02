@@ -14,12 +14,10 @@ import { OrderListUpload } from "./order-list-upload"
 import { useCart } from "@/hooks/use-cart"
 import { useToast } from "@/components/ui/use-toast"
 
-// Add TypeScript types for SpeechRecognition
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition
-    webkitSpeechRecognition: typeof SpeechRecognition
-  }
+// We're declaring the global SpeechRecognition interfaces
+interface Window {
+  SpeechRecognition: any
+  webkitSpeechRecognition: any
 }
 
 interface SpeechRecognitionEvent extends Event {
@@ -48,31 +46,16 @@ interface SpeechRecognitionAlternative {
   confidence: number
 }
 
-class SpeechRecognition extends EventTarget {
+// Type for SpeechRecognition
+interface ISpeechRecognition {
   continuous: boolean
   interimResults: boolean
   lang: string
   onresult: ((event: SpeechRecognitionEvent) => void) | null
   onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
   onend: (() => void) | null
-
-  constructor() {
-    super()
-    this.continuous = false
-    this.interimResults = false
-    this.lang = "en-US"
-    this.onresult = null
-    this.onerror = null
-    this.onend = null
-  }
-
-  start(): void {
-    // Implementation will be provided by the browser
-  }
-
-  stop(): void {
-    // Implementation will be provided by the browser
-  }
+  start(): void
+  stop(): void
 }
 
 interface Product {

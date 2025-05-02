@@ -128,13 +128,8 @@ const monthlyBaskets = [
 
 export function MonthlyBasket() {
   const { playSound } = useAudio()
-  const [isLoaded, setIsLoaded] = useState(false)
   const [activeBasketIndex, setActiveBasketIndex] = useState(0)
   const [expandedBasket, setExpandedBasket] = useState<string | null>(null)
-
-  useEffect(() => {
-    setIsLoaded(true)
-  }, [])
 
   const handlePrevBasket = () => {
     setActiveBasketIndex((prev) => (prev === 0 ? monthlyBaskets.length - 1 : prev - 1))

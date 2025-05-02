@@ -21,13 +21,6 @@ type CartState = {
   items: CartItem[]
 }
 
-type CartActions = {
-  addToCart: (item: CartItem) => void
-  removeFromCart: (id: string) => void
-  updateQuantity: (id: string, quantity: number) => void
-  clearCart: () => void
-}
-
 export const useCart = create<CartStore>()(
   persist(
     (set) => ({

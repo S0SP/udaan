@@ -30,9 +30,9 @@ const productDatabase = new Map([
 
 export async function GET(
   request: Request,
-  { params }: { params: { code: string } }
+  context: { params: { code: string } }
 ) {
-  const barcode = params.code
+  const barcode = context.params.code
 
   // In a real application, you would query your database here
   const product = productDatabase.get(barcode)

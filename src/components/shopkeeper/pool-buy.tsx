@@ -225,10 +225,6 @@ export function PoolBuy() {
     }, 2000)
   }
 
-  const getPoolById = (poolId: string) => {
-    return [...activePools, ...completedPools].find((pool) => pool.id === poolId)
-  }
-
   const getProgressPercentage = (amountRaised: number, totalAmount: number) => {
     return Math.min(100, Math.round((amountRaised / totalAmount) * 100))
   }

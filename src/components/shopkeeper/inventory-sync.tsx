@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { Scan, Camera, CheckCircle2, XCircle, Loader2, Search, Plus, Minus, Save, RefreshCw } from "lucide-react"
@@ -62,9 +62,27 @@ export function InventorySyncPage() {
   const [cameraReady, setCameraReady] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
   const scanAreaRef = useRef<HTMLDivElement>(null)
   const barcodeReaderRef = useRef<BrowserMultiFormatReader | null>(null)
+
+  const handleBarcodeScan = useCallback((barcode: string) => {
+    setScannedBarcode(barcode)
+    setIsScanning(false)
+    
+    // Find the product with matching barcode
+    const product = mockProducts.find((p) => p.barcode === barcode)
+    
+    if (product) {
+      setScannedProduct(product)
+      setScanResult("success")
+      playSound("success")
+      setShowParticles(true)
+    } else {
+      setScannedProduct(null)
+      setScanResult("error")
+      playSound("error")
+    }
+  }, [playSound]);
 
   // Filter products based on search query
   useEffect(() => {
@@ -175,7 +193,7 @@ export function InventorySyncPage() {
         }
       }
     }
-  }, [scanMode, scanResult, isScanning])
+  }, [scanMode, scanResult, isScanning, handleBarcodeScan])
 
   // Generate particles for success animation
   useEffect(() => {
@@ -233,34 +251,6 @@ export function InventorySyncPage() {
       ),
     )
     playSound("click")
-  }
-
-  const handleBarcodeScan = (barcode: string) => {
-    if (!barcode || barcode === scannedBarcode) return
-    
-    console.log("Processing scanned barcode:", barcode);
-    setScannedBarcode(barcode)
-    
-    // Find product by barcode
-    const product = mockProducts.find(p => p.barcode === barcode)
-    
-    if (product) {
-      console.log("Found matching product:", product.name);
-      setScannedProduct(product)
-      setScanResult("success")
-      setIsScanning(false) // Stop scanning after success
-      playSound("success")
-      setShowParticles(true)
-    } else {
-      console.log("No matching product found for barcode:", barcode);
-      // Don't stop scanning if product not found, let them try again
-      playSound("error")
-      // Show temporary error toast instead of changing the scan state
-      setTimeout(() => {
-        // Clear the error after 2 seconds
-        setScannedBarcode(null)
-      }, 2000)
-    }
   }
 
   const renderScanArea = () => {

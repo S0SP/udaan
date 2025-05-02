@@ -61,7 +61,7 @@ export function BlockchainSync() {
   const [secondsAgo, setSecondsAgo] = useState(0)
   const [isSyncing, setIsSyncing] = useState(false)
   const [transactions, setTransactions] = useState(mockTransactions)
-  const [inventoryHash, setInventoryHash] = useState("QmXyZ123abcDEF456ghiJKL789mnoPQR")
+  const [inventoryHash] = useState("QmXyZ123abcDEF456ghiJKL789mnoPQR")
 
   // Update seconds ago counter
   useEffect(() => {
