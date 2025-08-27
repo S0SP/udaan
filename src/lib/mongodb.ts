@@ -1,7 +1,7 @@
 import { MongoClient, Db } from 'mongodb';
 
-const MONGODB_URI = 'mongodb+srv://sumitchourasia63:lvPmW0TvP5XxqAos@cluster0.o4znxej.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
-const DB_NAME = 'kiraanakloud';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://sumitchourasia63:lvPmW0TvP5XxqAos@cluster0.o4znxej.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+const DB_NAME = process.env.DB_NAME || 'kiraanakloud';
 
 let cachedClient: MongoClient | null = null;
 let cachedDb: Db | null = null;

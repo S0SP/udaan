@@ -1,36 +1,179 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# KiraanaKloud - Invoice Scanner & Inventory Management
 
-## Getting Started
+A modern web application for invoice scanning, barcode management, and inventory tracking built with Next.js, MongoDB, and Gemini AI.
 
-First, run the development server:
+## 🚀 Features
 
+- **Invoice Scanning**: Upload invoice images and extract data using Gemini AI
+- **Barcode Management**: Generate and manage unique barcodes for products
+- **Real-time Inventory**: Track stock levels with barcode scanning
+- **Product Management**: Complete product lifecycle management
+- **MongoDB Integration**: Persistent data storage with MongoDB Atlas
+
+## 🛠️ Tech Stack
+
+- **Frontend**: Next.js 15, React, TypeScript, Tailwind CSS
+- **Backend**: Next.js API Routes, MongoDB
+- **AI**: Google Gemini AI for invoice analysis
+- **Database**: MongoDB Atlas
+- **Deployment**: Vercel
+
+## 📋 Prerequisites
+
+- Node.js 18+ 
+- MongoDB Atlas account
+- Google Gemini AI API key
+
+## 🚀 Quick Start
+
+### 1. Clone the repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/yourusername/kiraanakloud.git
+cd kiraanakloud
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Install dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Set up environment variables
+Create a `.env.local` file in the root directory:
+```env
+MONGODB_URI=your_mongodb_connection_string
+GEMINI_API_KEY=your_gemini_api_key
+DB_NAME=kiraanakloud
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Run the development server
+```bash
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000) to view the application.
 
-To learn more about Next.js, take a look at the following resources:
+## 📁 Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+├── app/
+│   ├── api/
+│   │   ├── barcode/          # Barcode management API
+│   │   ├── invoices/         # Invoice storage API
+│   │   └── test-mongodb/     # MongoDB connection test
+│   ├── shopkeeper/           # Shopkeeper dashboard pages
+│   └── layout.tsx
+├── components/
+│   ├── shopkeeper/           # Shopkeeper components
+│   ├── ui/                   # Reusable UI components
+│   └── audio-provider.tsx
+├── lib/
+│   └── mongodb.ts           # MongoDB connection service
+└── services/
+    └── geminiInvoiceService.ts # Gemini AI integration
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🔧 API Endpoints
 
-## Deploy on Vercel
+### Invoice Management
+- `POST /api/invoices` - Store invoice data
+- `GET /api/invoices` - Get all invoices
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Barcode Management
+- `POST /api/barcode` - Look up product by barcode
+- `PUT /api/barcode` - Update stock (sell/restock)
+- `GET /api/barcode` - Get all products
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🗄️ Database Schema
+
+### Invoices Collection
+```javascript
+{
+  items: [
+    {
+      name: string,
+      quantity: number,
+      price: number,
+      total: number
+    }
+  ],
+  totalAmount: number,
+  invoiceDate?: string,
+  vendorName?: string,
+  invoiceNumber?: string,
+  createdAt: Date,
+  imageUrl?: string
+}
+```
+
+### Barcodes Collection
+```javascript
+{
+  name: string,
+  barcode: string,
+  imageUrl: string,
+  productId: ObjectId,
+  createdAt: Date
+}
+```
+
+## 🚀 Deployment
+
+### Deploy to Vercel
+
+1. Push your code to GitHub
+2. Connect your repository to Vercel
+3. Add environment variables in Vercel dashboard:
+   - `MONGODB_URI`
+   - `GEMINI_API_KEY`
+   - `DB_NAME`
+4. Deploy!
+
+## 📱 Usage
+
+### For Shopkeepers
+
+1. **New Stock Upload**: Upload invoice images to add new products
+2. **Inventory Sync**: Scan barcodes to update stock levels
+3. **Products Management**: View and manage all products
+
+### Features
+
+- **Invoice Analysis**: AI-powered invoice data extraction
+- **Barcode Generation**: Automatic barcode generation for products
+- **Stock Tracking**: Real-time inventory updates
+- **Product Search**: Search products by name or barcode
+
+## 🔒 Security
+
+- Input validation for all API endpoints
+- JSON parsing error handling
+- Database connection error handling
+- Graceful error responses
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Google Gemini AI for invoice analysis
+- MongoDB Atlas for database hosting
+- Vercel for deployment platform
+- Next.js team for the amazing framework
+
+## 📞 Support
+
+For support, email chourasiasumit51@gmail.com or create an issue in the repository.
+
+---
+
+Made with ❤️ by Sumit Chourasia
