@@ -32,11 +32,10 @@ const productDatabase = new Map([
 
 export async function GET(
   request: NextRequest,
-  // Correct the second argument to receive route parameters
-  { params }: { params: { code: string } }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   // Access the barcode from the params object
-  const barcode = params.code
+  const { code: barcode } = await params
 
   // In a real application, you would query your database here
   const product = productDatabase.get(barcode)
