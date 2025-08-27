@@ -1,11 +1,5 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
   "env": {
     "MONGODB_URI": "mongodb+srv://sumitchourasia63:lvPmW0TvP5XxqAos@cluster0.o4znxej.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0",
     "GEMINI_API_KEY": "AIzaSyCNqzsowbbihCkD8ATmSD_94JEzrG7DNJ4",
