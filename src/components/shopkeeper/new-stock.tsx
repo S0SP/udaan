@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { Camera, Upload, X, Loader2, Save, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export function NewStockUpload() {
+  const router = useRouter()
   const { playSound } = useAudio()
   const [image, setImage] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -142,12 +144,63 @@ export function NewStockUpload() {
     }
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!result) return
     
-    // TODO: Implement saving to database
-    console.log('Saving invoice data:', result)
-    playSound("success")
+    setIsLoading(true)
+    
+    try {
+      // Store invoice data in MongoDB
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          items: result.items,
+          totalAmount: result.totalAmount,
+          invoiceDate: result.invoiceDate,
+          vendorName: result.vendorName,
+          invoiceNumber: result.invoiceNumber,
+          imageUrl: image || '/placeholder.svg'
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save invoice data')
+      }
+
+      const data = await response.json()
+      
+      // Convert invoice items to product format for local display
+      const newProducts = result.items.map((item, index) => ({
+        id: `new-${Date.now()}-${index}`,
+        name: item.name,
+        sku: `SKU-${Date.now().toString().slice(-6)}-${index}`,
+        category: result.vendorName || "Uncategorized",
+        subcategory: "New Stock",
+        price: item.price,
+        costPrice: item.price * 0.8, // Assuming 20% margin
+        stock: item.quantity,
+        image: image || "/placeholder.svg?height=100&width=100",
+        status: "active",
+        featured: false,
+        barcode: data.items[index]?.barcode || `BC${Date.now()}${index}`
+      }))
+      
+      // Store the new products in localStorage to access them in the products page
+      localStorage.setItem('newStockProducts', JSON.stringify(newProducts))
+      
+      // Navigate to the products page
+      playSound("success")
+      router.push('/shopkeeper/products')
+    } catch (error) {
+      console.error('Error saving invoice data:', error)
+      setError('Failed to save invoice data to database')
+      playSound("error")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -371,4 +424,4 @@ export function NewStockUpload() {
       </div>
     </div>
   )
-} 
+}

@@ -10,91 +10,113 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAudio } from "@/components/audio-provider"
 import { BrowserMultiFormatReader, Result, BarcodeFormat, DecodeHintType } from "@zxing/library"
 
-// Mock product data
-const mockProducts = [
-  {
-    id: "1",
-    name: "Whole Wheat Bread",
-    barcode: "8901234567890",
-    price: 45,
-    stock: 12,
-    image: "/placeholder.svg?height=100&width=100",
-  },
-  {
-    id: "2",
-    name: "Organic Milk 1L",
-    barcode: "8901234567891",
-    price: 60,
-    stock: 8,
-    image: "/placeholder.svg?height=100&width=100",
-  },
-  {
-    id: "3",
-    name: "Fresh Tomatoes 1kg",
-    barcode: "8901234567892",
-    price: 40,
-    stock: 15,
-    image: "/placeholder.svg?height=100&width=100",
-  },
-  {
-    id: "4",
-    name: "Paracetamol Tablets",
-    barcode: "8901234567893",
-    price: 25,
-    stock: 30,
-    image: "/placeholder.svg?height=100&width=100",
-  },
-]
+// Product interface
+interface Product {
+  id: string;
+  name: string;
+  barcode: string;
+  price: number;
+  stock: number;
+  image: string;
+}
 
 export function InventorySyncPage() {
   const { playSound } = useAudio()
   const [scanMode, setScanMode] = useState<"barcode" | "camera" | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [scanResult, setScanResult] = useState<"success" | "error" | null>(null)
-  const [scannedProduct, setScannedProduct] = useState<(typeof mockProducts)[0] | null>(null)
+  const [scannedProduct, setScannedProduct] = useState<Product | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
-  const [filteredProducts, setFilteredProducts] = useState(mockProducts)
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([])
   const [showParticles, setShowParticles] = useState(false)
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; size: number; color: string }>>(
     [],
   )
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const scanAreaRef = useRef<HTMLDivElement>(null)
   const barcodeReaderRef = useRef<BrowserMultiFormatReader | null>(null)
 
-  const handleBarcodeScan = useCallback((barcode: string) => {
+  const handleBarcodeScan = useCallback(async (barcode: string) => {
     setScannedBarcode(barcode)
     setIsScanning(false)
+    setIsLoading(true)
     
-    // Find the product with matching barcode
-    const product = mockProducts.find((p) => p.barcode === barcode)
-    
-    if (product) {
-      setScannedProduct(product)
-      setScanResult("success")
-      playSound("success")
-      setShowParticles(true)
-    } else {
+    try {
+      // Find the product with matching barcode from MongoDB
+      const response = await fetch('/api/barcode', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ barcode }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const product: Product = {
+          id: data.product.barcode, // Use barcode as ID
+          name: data.product.name,
+          barcode: data.product.barcode,
+          price: data.product.price,
+          stock: data.product.quantity,
+          image: data.product.imageUrl
+        }
+        
+        setScannedProduct(product)
+        setScanResult("success")
+        playSound("success")
+        setShowParticles(true)
+      } else {
+        setScannedProduct(null)
+        setScanResult("error")
+        playSound("error")
+      }
+    } catch (error) {
+      console.error('Error scanning barcode:', error)
       setScannedProduct(null)
       setScanResult("error")
       playSound("error")
+    } finally {
+      setIsLoading(false)
     }
   }, [playSound]);
 
-  // Filter products based on search query
+  // Load products from MongoDB and filter based on search query
   useEffect(() => {
-    if (searchQuery) {
-      const filtered = mockProducts.filter(
-        (product) =>
-          product.name.toLowerCase().includes(searchQuery.toLowerCase()) || product.barcode.includes(searchQuery),
-      )
-      setFilteredProducts(filtered)
-    } else {
-      setFilteredProducts(mockProducts)
+    const loadProducts = async () => {
+      try {
+        const response = await fetch('/api/barcode')
+        if (response.ok) {
+          const data = await response.json()
+          const products: Product[] = data.products.map((p: any) => ({
+            id: p.barcode,
+            name: p.name,
+            barcode: p.barcode,
+            price: p.price,
+            stock: p.quantity,
+            image: p.imageUrl
+          }))
+          
+          if (searchQuery) {
+            const filtered = products.filter(
+              (product) =>
+                product.name.toLowerCase().includes(searchQuery.toLowerCase()) || product.barcode.includes(searchQuery),
+            )
+            setFilteredProducts(filtered)
+          } else {
+            setFilteredProducts(products)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading products:', error)
+      }
     }
+
+    loadProducts()
   }, [searchQuery])
 
   // Initialize and clean up barcode reader
@@ -225,14 +247,11 @@ export function InventorySyncPage() {
     setIsScanning(true)
     playSound("click")
 
-    // Simulate scanning process
+    // Simulate scanning process for demo
     setTimeout(() => {
-      const randomProduct = mockProducts[Math.floor(Math.random() * mockProducts.length)]
-      setScannedProduct(randomProduct)
-      setScanResult("success")
-      setIsScanning(false)
-      playSound("success")
-      setShowParticles(true)
+      // This is just for demo purposes - in real implementation, this would be handled by camera
+      const demoBarcode = "8901234567890"
+      handleBarcodeScan(demoBarcode)
     }, 2000)
   }
 
@@ -244,13 +263,51 @@ export function InventorySyncPage() {
     playSound("click")
   }
 
-  const updateStock = (productId: string, change: number) => {
-    setFilteredProducts((prev) =>
-      prev.map((product) =>
-        product.id === productId ? { ...product, stock: Math.max(0, product.stock + change) } : product,
-      ),
-    )
-    playSound("click")
+  const updateStock = async (productId: string, change: number) => {
+    try {
+      // Find the product by ID (which is the barcode)
+      const product = filteredProducts.find(p => p.id === productId)
+      if (!product) return
+
+      const action = change < 0 ? 'sell' : 'restock'
+      
+      const response = await fetch('/api/barcode', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          barcode: product.barcode,
+          action: action
+        }),
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        
+        // Update local state with new data
+        setFilteredProducts((prev) =>
+          prev.map((p) =>
+            p.id === productId ? { 
+              ...p, 
+              stock: data.product.quantity 
+            } : p
+          )
+        )
+        
+        // Update scanned product if it's the same one
+        if (scannedProduct && scannedProduct.id === productId) {
+          setScannedProduct({
+            ...scannedProduct,
+            stock: data.product.quantity
+          })
+        }
+        
+        playSound("click")
+      }
+    } catch (error) {
+      console.error('Error updating stock:', error)
+    }
   }
 
   const renderScanArea = () => {
@@ -260,7 +317,7 @@ export function InventorySyncPage() {
           ref={scanAreaRef}
           className="relative w-full max-w-md h-64 mx-auto bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center"
         >
-          {isScanning ? (
+          {isScanning || isLoading ? (
             <div className="text-center">
               <motion.div
                 animate={{
@@ -275,7 +332,9 @@ export function InventorySyncPage() {
                 className="h-0.5 w-full bg-blue-500 absolute left-0"
               />
               <Loader2 className="h-10 w-10 text-blue-500 animate-spin mx-auto mb-2" />
-              <p className="text-gray-600">Scanning barcode...</p>
+              <p className="text-gray-600">
+                {isScanning ? "Scanning barcode..." : "Looking up product..."}
+              </p>
             </div>
           ) : scanResult ? (
             <div className="text-center p-4">

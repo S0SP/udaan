@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
+import { useToast } from "@/hooks/use-toast"
 import {
   Search,
   Plus,
@@ -134,6 +135,7 @@ const products = [
 
 export function ProductsPage() {
   const { playSound } = useAudio()
+  const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -141,24 +143,84 @@ export function ProductsPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [showFilters, setShowFilters] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [filteredProducts, setFilteredProducts] = useState(products)
 
   useEffect(() => {
     setIsLoaded(true)
+    
+    // Load products from MongoDB
+    const loadProducts = async () => {
+      try {
+        const response = await fetch('/api/barcode')
+        if (response.ok) {
+          const data = await response.json()
+          const mongoProducts = data.products.map((p: any) => ({
+            id: p.barcode,
+            name: p.name,
+            sku: p.barcode,
+            category: "Products",
+            subcategory: "Inventory",
+            price: p.price,
+            costPrice: p.price * 0.8,
+            stock: p.quantity,
+            image: p.imageUrl,
+            status: p.quantity > 0 ? "active" : "out_of_stock",
+            featured: false
+          }))
+          
+          // Check if there are new products from the new-stock page
+          const newStockProducts = localStorage.getItem('newStockProducts')
+          if (newStockProducts) {
+            try {
+              const parsedProducts = JSON.parse(newStockProducts)
+              // Combine MongoDB products with new stock products
+              const combinedProducts = [...mongoProducts, ...parsedProducts]
+              setFilteredProducts(combinedProducts)
+              
+              // Clear the localStorage after loading the products
+              localStorage.removeItem('newStockProducts')
+              
+              // Show success notification
+              toast({
+                title: "Inventory Updated",
+                description: `${parsedProducts.length} new products added to inventory.`,
+                variant: "default",
+              })
+            } catch (error) {
+              console.error('Error parsing new stock products:', error)
+              setFilteredProducts(mongoProducts)
+            }
+          } else {
+            setFilteredProducts(mongoProducts)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading products from MongoDB:', error)
+        // Fallback to mock data if MongoDB fails
+        setFilteredProducts(products)
+      }
+    }
+
+    loadProducts()
   }, [])
 
-  // Filter products based on search query, category, and status
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch =
-      searchQuery === "" ||
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchQuery.toLowerCase())
+  // Update filtered products whenever search criteria change
+  useEffect(() => {
+    const filtered = products.filter((product) => {
+      const matchesSearch =
+        searchQuery === "" ||
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.sku.toLowerCase().includes(searchQuery.toLowerCase())
 
-    const matchesCategory = categoryFilter === "all" || product.category.toLowerCase() === categoryFilter.toLowerCase()
+      const matchesCategory = categoryFilter === "all" || product.category.toLowerCase() === categoryFilter.toLowerCase()
 
-    const matchesStatus = statusFilter === "all" || product.status === statusFilter
+      const matchesStatus = statusFilter === "all" || product.status === statusFilter
 
-    return matchesSearch && matchesCategory && matchesStatus
-  })
+      return matchesSearch && matchesCategory && matchesStatus
+    })
+    
+    setFilteredProducts(filtered)
+  }, [searchQuery, categoryFilter, statusFilter])
 
   // Sort products
   const sortedProducts = [...filteredProducts].sort((a, b) => {
