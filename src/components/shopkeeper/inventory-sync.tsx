@@ -35,53 +35,54 @@ export function InventorySyncPage() {
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null)
   const [cameraReady, setCameraReady] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [tempProductCard, setTempProductCard] = useState<Product | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const scanAreaRef = useRef<HTMLDivElement>(null)
   const barcodeReaderRef = useRef<BrowserMultiFormatReader | null>(null)
 
   const handleBarcodeScan = useCallback(async (barcode: string) => {
-    setScannedBarcode(barcode)
-    setIsScanning(false)
-    setIsLoading(true)
-    
+    setScannedBarcode(barcode);
+    setIsScanning(false);
+    setIsLoading(true);
+
     try {
-      // Find the product with matching barcode from MongoDB
-      const response = await fetch('/api/barcode', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ barcode }),
-      })
+      const response = await fetch(`/api/products/${barcode}`);
 
       if (response.ok) {
-        const data = await response.json()
+        const productData = await response.json();
         const product: Product = {
-          id: data.product.barcode, // Use barcode as ID
-          name: data.product.name,
-          barcode: data.product.barcode,
-          price: data.product.price,
-          stock: data.product.quantity,
-          image: data.product.imageUrl
-        }
-        
-        setScannedProduct(product)
-        setScanResult("success")
-        playSound("success")
-        setShowParticles(true)
+          id: productData.barcode,
+          name: productData.name,
+          barcode: productData.barcode,
+          price: productData.price,
+          stock: productData.quantity,
+          image: productData.imageUrl,
+        };
+
+        setScannedProduct(product);
+        setTempProductCard(product); // Show the temp card
+        setScanResult("success");
+        playSound("success");
+        setShowParticles(true);
+
+        // Hide the card after 3 seconds
+        setTimeout(() => {
+          setTempProductCard(null);
+        }, 3000);
+
       } else {
-        setScannedProduct(null)
-        setScanResult("error")
-        playSound("error")
+        setScannedProduct(null);
+        setScanResult("error");
+        playSound("error");
       }
     } catch (error) {
-      console.error('Error scanning barcode:', error)
-      setScannedProduct(null)
-      setScanResult("error")
-      playSound("error")
+      console.error('Error scanning barcode:', error);
+      setScannedProduct(null);
+      setScanResult("error");
+      playSound("error");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }, [playSound]);
 
@@ -156,8 +157,7 @@ export function InventorySyncPage() {
           
           // Get video devices
           const videoDevices = await barcodeReaderRef.current.listVideoInputDevices()
-          console.log("Available video devices:", videoDevices);
-          
+                    
           // Find back camera if available
           let selectedDeviceId = videoDevices[0]?.deviceId
           const backCamera = videoDevices.find(device => 
@@ -166,17 +166,14 @@ export function InventorySyncPage() {
           )
           
           if (backCamera) {
-            console.log("Using back camera:", backCamera.label);
-            selectedDeviceId = backCamera.deviceId
+                        selectedDeviceId = backCamera.deviceId
           } else if (videoDevices.length > 1) {
-            console.log("Using last camera device as back camera");
-            selectedDeviceId = videoDevices[videoDevices.length - 1].deviceId
+                        selectedDeviceId = videoDevices[videoDevices.length - 1].deviceId
           }
 
           if (videoRef.current) {
             setCameraReady(true)
-            console.log("Starting continuous scanning with device:", selectedDeviceId);
-            
+                        
             // Start continuous scanning with improved settings
             await barcodeReaderRef.current.decodeFromConstraints(
               {
@@ -192,8 +189,7 @@ export function InventorySyncPage() {
               (result: Result | null, error: Error | undefined) => {
                 if (result && isScanning && !scanResult) {
                   const barcode = result.getText()
-                  console.log("Detected barcode:", barcode);
-                  handleBarcodeScan(barcode)
+                                    handleBarcodeScan(barcode)
                 }
               }
             )
@@ -256,6 +252,9 @@ export function InventorySyncPage() {
   }
 
   const resetScan = () => {
+    if (scannedProduct) {
+      updateStock(scannedProduct.id, -1); // Decrease stock when scanning another product
+    }
     setScanResult(null)
     setScannedProduct(null)
     setScannedBarcode(null)
@@ -408,6 +407,7 @@ export function InventorySyncPage() {
       )
     } else if (scanMode === "camera") {
       return (
+        <div className="flex gap-4 items-start">
         <div className="relative w-full max-w-md mx-auto">
           <div className="relative w-full h-64 bg-black rounded-lg overflow-hidden">
             <video 
@@ -547,6 +547,36 @@ export function InventorySyncPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Temporary Product Card */}
+        {tempProductCard && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.3 }}
+            className="w-1/3 bg-white rounded-lg shadow-lg p-4 sticky top-0"
+          >
+            <Card className="w-full">
+              <CardContent className="p-0">
+                <div className="w-full h-40 relative" style={{ flexBasis: '70%' }}>
+                  <Image
+                    src={tempProductCard.image || "/placeholder.svg"}
+                    alt={tempProductCard.name}
+                    layout="fill"
+                    objectFit="cover"
+                    className="rounded-t-lg"
+                  />
+                </div>
+                <div className="p-3" style={{ flexBasis: '30%' }}>
+                  <h3 className="font-bold text-md truncate">{tempProductCard.name}</h3>
+                  <p className="text-green-600 font-semibold text-lg">₹{tempProductCard.price.toFixed(2)}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
         </div>
       )
     }

@@ -78,70 +78,26 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Find the product by barcode
-    const barcodeEntry = await db.collection(COLLECTIONS.BARCODES).findOne({
-      barcode: barcode
-    });
+    const change = action === 'sell' ? -1 : 1;
 
-    if (!barcodeEntry) {
+    const result = await db.collection(COLLECTIONS.BARCODES).findOneAndUpdate(
+      { barcode: barcode },
+      { $inc: { quantity: change } },
+      { returnDocument: 'after' }
+    );
+
+    if (!result || !result.value) {
       return NextResponse.json(
         { error: 'Product not found with this barcode' },
         { status: 404 }
       );
     }
 
-    // Find the latest invoice for this product
-    const latestInvoice = await db.collection(COLLECTIONS.INVOICES)
-      .findOne(
-        { 
-          'items.name': barcodeEntry.name 
-        },
-        { 
-          sort: { createdAt: -1 } 
-        }
-      );
-
-    if (!latestInvoice) {
-      return NextResponse.json(
-        { error: 'No inventory data found for this product' },
-        { status: 404 }
-      );
-    }
-
-    // Update the quantity based on action (sell = decrease by 1)
-    const updatedItems = latestInvoice.items.map((item: any) => {
-      if (item.name === barcodeEntry.name) {
-        const newQuantity = action === 'sell' ? Math.max(0, item.quantity - 1) : item.quantity + 1;
-        return { ...item, quantity: newQuantity };
-      }
-      return item;
-    });
-
-    // Create a new invoice entry with updated quantities
-    const newInvoiceData = {
-      ...latestInvoice,
-      _id: undefined, // Remove the original _id
-      items: updatedItems,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      action: action
-    };
-
-    // Insert the updated invoice
-    await db.collection(COLLECTIONS.INVOICES).insertOne(newInvoiceData);
-
-    // Get the updated product info
-    const updatedProduct = updatedItems.find((item: any) => item.name === barcodeEntry.name);
+    const updatedProduct = result.value;
 
     return NextResponse.json({
       success: true,
-      product: {
-        name: barcodeEntry.name,
-        barcode: barcodeEntry.barcode,
-        imageUrl: barcodeEntry.imageUrl,
-        quantity: updatedProduct.quantity,
-        price: updatedProduct.price
-      },
+      product: updatedProduct,
       message: `Product ${action === 'sell' ? 'sold' : 'restocked'} successfully`
     });
 

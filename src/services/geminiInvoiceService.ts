@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const API_KEY = 'AIzaSyCNqzsowbbihCkD8ATmSD_94JEzrG7DNJ4';
-console.log('API Key available:', !!API_KEY); // Debug log (will only show if key exists, not the key itself)
 
 const genAI = new GoogleGenerativeAI(API_KEY || '');
 
@@ -22,8 +21,7 @@ async function fileToGenerativeContent(file: File) {
     });
 
     const base64Data = await base64EncodedDataPromise;
-    console.log('File converted to base64 successfully:', !!base64Data); // Debug log
-
+    
     return {
       inlineData: {
         data: base64Data,
@@ -58,8 +56,7 @@ export async function analyzeInvoice(imageFile: File): Promise<InvoiceAnalysisRe
   }
 
   try {
-    console.log('Starting invoice analysis...');
-
+    
     const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash"
     });
@@ -83,19 +80,14 @@ INVOICE_NO: [Invoice Number]
 
 Important: Keep your response structured exactly as above. For items, use the | character as a separator.`;
 
-    console.log('Converting image to required format...');
-    const imageParts = await fileToGenerativeContent(imageFile);
+        const imageParts = await fileToGenerativeContent(imageFile);
     
-    console.log('Sending request to Gemini API...');
-    const result = await model.generateContent([prompt, imageParts]);
+        const result = await model.generateContent([prompt, imageParts]);
     
-    console.log('Received response from Gemini API');
-    const response = await result.response;
+        const response = await result.response;
     const text = response.text();
 
-    console.log('Processing API response...');
-    console.log('Raw response:', text); // Debug log
-
+        
     // Initialize the result object
     const parsedResult: InvoiceAnalysisResult = {
       items: [],
@@ -146,10 +138,9 @@ Important: Keep your response structured exactly as above. For items, use the | 
       }
     }
 
-    console.log('Parsed result:', parsedResult); // Debug log
-    return parsedResult;
+        return parsedResult;
   } catch (error) {
-    console.error('Detailed error in analyzeInvoice:', error);
+    console.error('Error in analyzeInvoice:', error);
     if (error instanceof Error) {
       throw new Error(`Analysis failed: ${error.message}`);
     }

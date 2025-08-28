@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 import {
   Search,
   Plus,
@@ -17,6 +17,7 @@ import {
   Package,
   Tag,
   BarChart,
+  Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,226 +25,96 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { useAudio } from "@/components/audio-provider"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
-// Mock data for products
-const products = [
-  {
-    id: "1",
-    name: "Fresh Organic Vegetables Pack",
-    sku: "GRO-VEG-001",
-    category: "Groceries",
-    subcategory: "Vegetables",
-    price: 299,
-    costPrice: 220,
-    stock: 45,
-    image: "/placeholder.svg?height=100&width=100",
-    status: "active",
-    featured: true,
-  },
-  {
-    id: "2",
-    name: "Whole Wheat Bread",
-    sku: "GRO-BAK-002",
-    category: "Groceries",
-    subcategory: "Bakery",
-    price: 45,
-    costPrice: 32,
-    stock: 78,
-    image: "/placeholder.svg?height=100&width=100",
-    status: "active",
-    featured: false,
-  },
-  {
-    id: "3",
-    name: "Organic Milk 1L",
-    sku: "GRO-DAI-003",
-    category: "Groceries",
-    subcategory: "Dairy",
-    price: 60,
-    costPrice: 45,
-    stock: 120,
-    image: "/placeholder.svg?height=100&width=100",
-    status: "active",
-    featured: true,
-  },
-  {
-    id: "4",
-    name: "Fresh Tomatoes 1kg",
-    sku: "GRO-VEG-004",
-    category: "Groceries",
-    subcategory: "Vegetables",
-    price: 40,
-    costPrice: 28,
-    stock: 65,
-    image: "/placeholder.svg?height=100&width=100",
-    status: "active",
-    featured: false,
-  },
-  {
-    id: "5",
-    name: "Brown Rice 5kg",
-    sku: "GRO-GRA-005",
-    category: "Groceries",
-    subcategory: "Grains",
-    price: 250,
-    costPrice: 190,
-    stock: 32,
-    image: "/placeholder.svg?height=100&width=100",
-    status: "active",
-    featured: false,
-  },
-  {
-    id: "6",
-    name: "Paracetamol Tablets",
-    sku: "MED-FEV-001",
-    category: "Medicines",
-    subcategory: "Fever",
-    price: 25,
-    costPrice: 18,
-    stock: 150,
-    image: "/placeholder.svg?height=100&width=100",
-    status: "active",
-    featured: false,
-  },
-  {
-    id: "7",
-    name: "Vitamin C Supplements",
-    sku: "MED-VIT-002",
-    category: "Medicines",
-    subcategory: "Vitamins",
-    price: 350,
-    costPrice: 280,
-    stock: 45,
-    image: "/placeholder.svg?height=100&width=100",
-    status: "active",
-    featured: true,
-  },
-  {
-    id: "8",
-    name: "Hand Sanitizer 500ml",
-    sku: "MED-HYG-003",
-    category: "Medicines",
-    subcategory: "Hygiene",
-    price: 150,
-    costPrice: 110,
-    stock: 0,
-    image: "/placeholder.svg?height=100&width=100",
-    status: "out_of_stock",
-    featured: false,
-  },
-]
+interface Product {
+  _id: string
+  name: string
+  sku?: string
+  category: string
+  subcategory?: string
+  price: number
+  costPrice?: number
+  quantity: number
+  imageUrl?: string
+  status?: "active" | "out_of_stock"
+  featured?: boolean
+  barcode?: string
+  createdAt: string
+  updatedAt: string
+}
 
 export function ProductsPage() {
   const { playSound } = useAudio()
   const { toast } = useToast()
+
+  const [products, setProducts] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
   const [sortField, setSortField] = useState("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
-  const [showFilters, setShowFilters] = useState(false)
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [filteredProducts, setFilteredProducts] = useState(products)
 
   useEffect(() => {
-    setIsLoaded(true)
-    
-    // Load products from MongoDB
     const loadProducts = async () => {
+      setIsLoading(true)
+      setError(null)
       try {
-        const response = await fetch('/api/barcode')
-        if (response.ok) {
-          const data = await response.json()
-          const mongoProducts = data.products.map((p: any) => ({
-            id: p.barcode,
-            name: p.name,
-            sku: p.barcode,
-            category: "Products",
-            subcategory: "Inventory",
-            price: p.price,
-            costPrice: p.price * 0.8,
-            stock: p.quantity,
-            image: p.imageUrl,
-            status: p.quantity > 0 ? "active" : "out_of_stock",
-            featured: false
-          }))
-          
-          // Check if there are new products from the new-stock page
-          const newStockProducts = localStorage.getItem('newStockProducts')
-          if (newStockProducts) {
-            try {
-              const parsedProducts = JSON.parse(newStockProducts)
-              // Combine MongoDB products with new stock products
-              const combinedProducts = [...mongoProducts, ...parsedProducts]
-              setFilteredProducts(combinedProducts)
-              
-              // Clear the localStorage after loading the products
-              localStorage.removeItem('newStockProducts')
-              
-              // Show success notification
-              toast({
-                title: "Inventory Updated",
-                description: `${parsedProducts.length} new products added to inventory.`,
-                variant: "default",
-              })
-            } catch (error) {
-              console.error('Error parsing new stock products:', error)
-              setFilteredProducts(mongoProducts)
-            }
-          } else {
-            setFilteredProducts(mongoProducts)
-          }
+        const response = await fetch('/api/products')
+        if (!response.ok) {
+          throw new Error('Failed to fetch products')
         }
-      } catch (error) {
-        console.error('Error loading products from MongoDB:', error)
-        // Fallback to mock data if MongoDB fails
-        setFilteredProducts(products)
+        const data = await response.json()
+        setProducts(data)
+      } catch (err) {
+        console.error('Error loading products from MongoDB:', err)
+        setError(err instanceof Error ? err.message : 'An unknown error occurred')
+        toast({
+          title: "Error",
+          description: "Could not load products from the database.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
       }
     }
 
     loadProducts()
-  }, [])
+  }, [toast])
 
-  // Update filtered products whenever search criteria change
-  useEffect(() => {
-    const filtered = products.filter((product) => {
+  const filteredAndSortedProducts = useMemo(() => {
+    let filtered = products.filter((product) => {
       const matchesSearch =
         searchQuery === "" ||
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.sku.toLowerCase().includes(searchQuery.toLowerCase())
+        (product.sku && product.sku.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (product.barcode && product.barcode.toLowerCase().includes(searchQuery.toLowerCase()))
 
       const matchesCategory = categoryFilter === "all" || product.category.toLowerCase() === categoryFilter.toLowerCase()
 
-      const matchesStatus = statusFilter === "all" || product.status === statusFilter
+      const stockStatus = product.quantity > 0 ? "active" : "out_of_stock"
+      const matchesStatus = statusFilter === "all" || stockStatus === statusFilter
 
       return matchesSearch && matchesCategory && matchesStatus
     })
-    
-    setFilteredProducts(filtered)
-  }, [searchQuery, categoryFilter, statusFilter])
 
-  // Sort products
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    let comparison = 0
+    return filtered.sort((a, b) => {
+      let comparison = 0
 
-    switch (sortField) {
-      case "name":
-        comparison = a.name.localeCompare(b.name)
-        break
-      case "price":
-        comparison = a.price - b.price
-        break
-      case "stock":
-        comparison = a.stock - b.stock
-        break
-      default:
-        comparison = 0
-    }
+      if (sortField === 'name' || sortField === 'category') {
+        comparison = a[sortField].localeCompare(b[sortField]);
+      } else if (sortField === 'price' || sortField === 'quantity') {
+        comparison = a[sortField] - b[sortField];
+      }
 
-    return sortDirection === "asc" ? comparison : -comparison
-  })
+      return sortDirection === "asc" ? comparison : -comparison
+    })
+  }, [products, searchQuery, categoryFilter, statusFilter, sortField, sortDirection])
 
-  const handleSort = (field: string) => {
+  const handleSort = (field: 'name' | 'price' | 'quantity' | 'category') => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc")
     } else {
@@ -258,6 +129,28 @@ export function ProductsPage() {
       return <ArrowUpDown className="h-4 w-4 ml-1" />
     }
     return sortDirection === "asc" ? <ArrowUp className="h-4 w-4 ml-1" /> : <ArrowDown className="h-4 w-4 ml-1" />
+  }
+
+  const allCategories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))], [products]);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="ml-4 text-lg">Loading Products...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>
+          Could not load products. Please try refreshing the page.
+        </AlertDescription>
+      </Alert>
+    )
   }
 
   return (
@@ -279,7 +172,7 @@ export function ProductsPage() {
         <div className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
           <Input
-            placeholder="Search by product name or SKU..."
+            placeholder="Search by product name, SKU, or barcode..."
             className="pl-10 h-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -288,18 +181,19 @@ export function ProductsPage() {
 
         <div className="flex gap-2">
           <Select value={categoryFilter} onValueChange={(value) => setCategoryFilter(value)}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full md:w-[180px]">
               <SelectValue placeholder="Filter by category" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="groceries">Groceries</SelectItem>
-              <SelectItem value="medicines">Medicines</SelectItem>
+              {allCategories.map(cat => (
+                <SelectItem key={cat} value={cat.toLowerCase()}>{cat}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
           <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value)}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full md:w-[180px]">
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
@@ -308,19 +202,6 @@ export function ProductsPage() {
               <SelectItem value="out_of_stock">Out of Stock</SelectItem>
             </SelectContent>
           </Select>
-
-          <Button
-            variant="outline"
-            className="md:hidden"
-            onClick={() => {
-              setShowFilters(!showFilters)
-              playSound("click")
-            }}
-          >
-            <Filter className="h-4 w-4 mr-2" />
-            Filters
-            <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${showFilters ? "rotate-180" : ""}`} />
-          </Button>
         </div>
       </motion.div>
 
@@ -328,7 +209,7 @@ export function ProductsPage() {
       <motion.div
         className="bg-white rounded-lg border shadow-sm overflow-hidden"
         initial={{ opacity: 0 }}
-        animate={{ opacity: isLoaded ? 1 : 0 }}
+        animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
         <div className="overflow-x-auto">
@@ -341,7 +222,9 @@ export function ProductsPage() {
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
+                  <div className="flex items-center cursor-pointer" onClick={() => handleSort("category")}>
+                    Category {getSortIcon("category")}
+                  </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   <div className="flex items-center cursor-pointer" onClick={() => handleSort("price")}>
@@ -349,8 +232,8 @@ export function ProductsPage() {
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <div className="flex items-center cursor-pointer" onClick={() => handleSort("stock")}>
-                    Stock {getSortIcon("stock")}
+                  <div className="flex items-center cursor-pointer" onClick={() => handleSort("quantity")}>
+                    Stock {getSortIcon("quantity")}
                   </div>
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -362,58 +245,53 @@ export function ProductsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {sortedProducts.length === 0 ? (
+              {filteredAndSortedProducts.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                     No products found. Try adjusting your filters or search query.
                   </td>
                 </tr>
               ) : (
-                sortedProducts.map((product, index) => (
+                filteredAndSortedProducts.map((product, index) => (
                   <motion.tr
-                    key={product.id}
+                    key={product._id}
                     className="hover:bg-gray-50"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 + index * 0.05 }}
+                    transition={{ delay: index * 0.05 }}
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 h-10 w-10 mr-3">
                           <Image
-                            src={product.image || "/placeholder.svg"}
+                            src={product.imageUrl || "/placeholder.svg"}
                             alt={product.name}
                             width={40}
                             height={40}
-                            className="rounded-md"
+                            className="rounded-md object-cover"
                           />
                         </div>
                         <div>
                           <div className="font-medium text-gray-900">{product.name}</div>
-                          <div className="text-xs text-gray-500">{product.sku}</div>
+                          <div className="text-xs text-gray-500">{product.barcode || product.sku}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm text-gray-900">{product.category}</div>
-                      <div className="text-xs text-gray-500">{product.subcategory}</div>
+                      <Badge variant="secondary">{product.category}</Badge>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-gray-900">₹{product.price}</div>
-                      <div className="text-xs text-gray-500">Cost: ₹{product.costPrice}</div>
+                      <div className="text-sm font-medium text-gray-900">₹{product.price.toFixed(2)}</div>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm text-gray-900">{product.stock}</div>
+                      <div className="text-sm text-gray-900">{product.quantity}</div>
                     </td>
                     <td className="px-4 py-3">
                       <Badge
-                        className={`${
-                          product.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-                        }`}
+                        variant={product.quantity > 0 ? "default" : "destructive"}
                       >
-                        {product.status === "active" ? "In Stock" : "Out of Stock"}
+                        {product.quantity > 0 ? "In Stock" : "Out of Stock"}
                       </Badge>
-                      {product.featured && <Badge className="ml-2 bg-blue-100 text-blue-800">Featured</Badge>}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end space-x-2">
@@ -451,8 +329,8 @@ export function ProductsPage() {
             <CardContent>
               <div className="text-2xl font-bold">{products.length}</div>
               <p className="text-xs text-gray-500 mt-1">
-                {products.filter((p) => p.status === "active").length} active,{" "}
-                {products.filter((p) => p.status === "out_of_stock").length} out of stock
+                {products.filter((p) => p.quantity > 0).length} active,{" "}
+                {products.filter((p) => p.quantity === 0).length} out of stock
               </p>
             </CardContent>
           </Card>
@@ -468,7 +346,7 @@ export function ProductsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                ₹{products.reduce((total, product) => total + product.price * product.stock, 0).toLocaleString()}
+                ₹{products.reduce((total, product) => total + product.price * product.quantity, 0).toLocaleString()}
               </div>
               <p className="text-xs text-gray-500 mt-1">Based on current stock levels</p>
             </CardContent>
@@ -480,13 +358,13 @@ export function ProductsPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-gray-500 flex items-center">
                 <BarChart className="h-4 w-4 mr-2 text-purple-500" />
-                Featured Products
+                Total Categories
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{products.filter((p) => p.featured).length}</div>
+              <div className="text-2xl font-bold">{allCategories.length}</div>
               <p className="text-xs text-gray-500 mt-1">
-                {((products.filter((p) => p.featured).length / products.length) * 100).toFixed(1)}% of total products
+                Across all products
               </p>
             </CardContent>
           </Card>

@@ -49,45 +49,58 @@ export async function POST(request: NextRequest) {
       createdAt: new Date()
     };
 
+    // Check if an invoice from this vendor already exists
+    if (body.vendorName) {
+      const existingInvoice = await db.collection(COLLECTIONS.INVOICES).findOne({
+        vendorName: body.vendorName,
+      });
+
+      if (existingInvoice) {
+        return NextResponse.json(
+          { error: 'Stock for this vendor has already been updated.' },
+          { status: 409 } // Conflict
+        );
+      }
+    }
+
     // Store invoice data
     const invoiceResult = await db.collection(COLLECTIONS.INVOICES).insertOne(invoiceData);
 
-    // Process each item and create/update barcode entries
-    const barcodeOperations = body.items.map(async (item) => {
-      // Generate a unique barcode if not exists (you might want to implement proper barcode generation)
-      const barcode = `BC${Date.now()}${Math.random().toString(36).substr(2, 5)}`;
-      
-      const barcodeData = {
-        name: item.name,
-        barcode: barcode,
-        imageUrl: body.imageUrl || '/placeholder.svg',
-        productId: invoiceResult.insertedId,
-        createdAt: new Date()
-      };
+    // After saving invoice, update the products collection
+    const productOperations = body.items.map(async (item) => {
+      const barcodeInfo = await db.collection(COLLECTIONS.BARCODES).findOne({ name: item.name });
+      const existingProduct = await db.collection(COLLECTIONS.PRODUCTS).findOne({ name: item.name });
 
-      // Check if product with this name already exists in barcodes collection
-      const existingBarcode = await db.collection(COLLECTIONS.BARCODES).findOne({
-        name: item.name
-      });
-
-      if (!existingBarcode) {
-        // Insert new barcode entry
-        await db.collection(COLLECTIONS.BARCODES).insertOne(barcodeData);
+      if (existingProduct) {
+        // If product exists, increment its quantity
+        await db.collection(COLLECTIONS.PRODUCTS).updateOne(
+          { _id: existingProduct._id },
+          { $inc: { quantity: item.quantity } }
+        );
+      } else {
+        // If product does not exist, create a new one
+        await db.collection(COLLECTIONS.PRODUCTS).insertOne({
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          category: body.vendorName || 'Uncategorized',
+          imageUrl: barcodeInfo?.imageUrl || '',
+          barcode: barcodeInfo?.barcode || '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
       }
 
-      return {
-        ...item,
-        barcode: existingBarcode?.barcode || barcode
-      };
+      return { ...item, barcode: barcodeInfo?.barcode || '' };
     });
 
-    const processedItems = await Promise.all(barcodeOperations);
+    const processedItems = await Promise.all(productOperations);
 
     return NextResponse.json({
       success: true,
       invoiceId: invoiceResult.insertedId,
       items: processedItems,
-      message: 'Invoice data stored successfully'
+      message: 'Invoice and products stored successfully'
     });
 
   } catch (error) {

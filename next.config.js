@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   images: {
-    domains: ['localhost'],
+    domains: ['localhost', 'upload.wikimedia.org'],
     remotePatterns: [
       {
         protocol: 'http',
@@ -10,8 +10,13 @@ const nextConfig = {
         port: '3001',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'upload.wikimedia.org',
+        pathname: '/**',
+      },
     ],
   },
 }
 
-module.exports = nextConfig 
+module.exports = nextConfig

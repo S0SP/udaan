@@ -11,10 +11,12 @@ import { useAudio } from "@/components/audio-provider"
 import { analyzeInvoice, InvoiceAnalysisResult } from "@/services/geminiInvoiceService"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { useToast } from "@/components/ui/use-toast"
 
 export function NewStockUpload() {
   const router = useRouter()
   const { playSound } = useAudio()
+  const { toast } = useToast()
   const [image, setImage] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -167,37 +169,30 @@ export function NewStockUpload() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to save invoice data')
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save invoice data');
       }
 
-      const data = await response.json()
-      
-      // Convert invoice items to product format for local display
-      const newProducts = result.items.map((item, index) => ({
-        id: `new-${Date.now()}-${index}`,
-        name: item.name,
-        sku: `SKU-${Date.now().toString().slice(-6)}-${index}`,
-        category: result.vendorName || "Uncategorized",
-        subcategory: "New Stock",
-        price: item.price,
-        costPrice: item.price * 0.8, // Assuming 20% margin
-        stock: item.quantity,
-        image: image || "/placeholder.svg?height=100&width=100",
-        status: "active",
-        featured: false,
-        barcode: data.items[index]?.barcode || `BC${Date.now()}${index}`
-      }))
-      
-      // Store the new products in localStorage to access them in the products page
-      localStorage.setItem('newStockProducts', JSON.stringify(newProducts))
+      toast({
+        title: "Success",
+        description: "Invoice and product stock have been updated successfully.",
+      });
       
       // Navigate to the products page
-      playSound("success")
-      router.push('/shopkeeper/products')
+      playSound("success");
+      router.push('/shopkeeper/products');
     } catch (error) {
-      console.error('Error saving invoice data:', error)
-      setError('Failed to save invoice data to database')
-      playSound("error")
+      console.error('Error saving invoice data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+      
+      toast({
+        title: "Error saving stock",
+        description: errorMessage,
+        variant: "destructive",
+      });
+
+      setError(errorMessage);
+      playSound("error");
     } finally {
       setIsLoading(false)
     }

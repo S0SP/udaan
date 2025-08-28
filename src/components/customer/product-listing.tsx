@@ -209,6 +209,7 @@ export function ProductListing({ category }: ProductListingProps) {
   const [sortBy, setSortBy] = useState("popularity")
   const [showFilters, setShowFilters] = useState(false)
   const [isLoaded, setIsLoaded] = useState(false)
+  const [isLoading, setIsLoading] = useState(true);
   const [products, setProducts] = useState(category === "groceries" ? groceryProducts : medicineProducts)
   const [filteredProducts, setFilteredProducts] = useState(products)
   const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([])
@@ -220,12 +221,45 @@ export function ProductListing({ category }: ProductListingProps) {
     setIsLoaded(true)
   }, [])
 
-  // Set products based on category
+  // Fetch products from API and set based on category
   useEffect(() => {
-    const productsData = category === "groceries" ? groceryProducts : medicineProducts
-    setProducts(productsData)
-    setFilteredProducts(productsData)
-  }, [category])
+    const fetchProducts = async () => {
+      setIsLoading(true);
+      // Start with mock data as fallback
+      const mockData = category === "groceries" ? groceryProducts : medicineProducts;
+      setProducts(mockData);
+
+      try {
+        const response = await fetch('/api/products');
+        if (!response.ok) {
+          throw new Error('Failed to fetch products');
+        }
+        const allProducts = await response.json();
+        
+        const mappedProducts = allProducts.map((p: any) => ({ 
+          ...p, 
+          id: p._id, 
+          inStock: p.stock && p.stock > 0,
+          image: p.image || "/placeholder.svg?height=200&width=200",
+          // Add fallback for missing properties to avoid errors
+          rating: p.rating || 4.0,
+          subcategory: p.subcategory || 'general',
+          category: p.category || 'groceries', // Assign a default category
+        }));
+
+        if (mappedProducts.length > 0) {
+          setProducts(mappedProducts);
+        }
+      } catch (error) {
+        console.error("Failed to fetch products, using mock data:", error);
+        // If API fails, we've already set mock data
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [category]);
 
   // Filter and sort products
   useEffect(() => {

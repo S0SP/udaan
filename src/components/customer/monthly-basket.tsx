@@ -149,8 +149,7 @@ export function MonthlyBasket() {
   const addToCart = (basketId: string) => {
     playSound("success")
     // In a real app, this would add all items to the cart
-    console.log(`Adding basket ${basketId} to cart`)
-  }
+      }
 
   return (
     <div className="max-w-6xl mx-auto">

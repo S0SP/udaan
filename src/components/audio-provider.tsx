@@ -22,8 +22,7 @@ export function AudioProvider({ children }: { children: React.ReactNode }) {
 
   const playSound = (sound: string) => {
     // No-op function since we're not using sounds
-    console.log(`Sound effect would play: ${sound}`)
-  }
+      }
 
   return (
     <AudioContext.Provider value={{ isMuted, toggleMute, playSound }}>

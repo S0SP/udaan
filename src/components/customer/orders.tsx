@@ -227,8 +227,7 @@ export function OrdersPage() {
 
     playSound("success")
     // In a real app, this would submit the rating to the backend
-    console.log(`Submitting rating ${rating} for order ${ratingOrder}`)
-
+    
     // Close the rating modal
     setRatingOrder(null)
   }
