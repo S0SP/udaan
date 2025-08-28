@@ -51,13 +51,7 @@ interface ISpeechRecognition {
   stop(): void
 }
 
-// Simplify the global declaration to avoid type conflicts
-declare global {
-  interface Window {
-    SpeechRecognition: any
-    webkitSpeechRecognition: any
-  }
-}
+// Use type assertion instead of global declaration to avoid conflicts
 
 // Combine grocery and medicine products for search
 const allProducts = [
@@ -240,7 +234,7 @@ export function SearchPage() {
   const toggleListening = () => {
     if (!isListening) {
       try {
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)()
+        const recognition = new ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)()
         recognition.continuous = false
         recognition.interimResults = false
         recognition.lang = "en-US"
@@ -276,7 +270,7 @@ export function SearchPage() {
         })
       }
     } else {
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)()
+      const recognition = new ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)()
       recognition.stop()
       setIsListening(false)
     }
