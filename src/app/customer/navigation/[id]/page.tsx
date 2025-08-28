@@ -1,10 +1,11 @@
 import { DeliveryTracking } from "@/components/customer/delivery-tracking"
 
 type PageProps = {
-  params: { id: string };
-  searchParams?: { [key: string]: string | string[] | undefined };
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default function DeliveryTrackingPage({ params }: PageProps) {
-  return <DeliveryTracking orderId={params.id} />
+export default async function DeliveryTrackingPage({ params }: PageProps) {
+  const { id } = await params;
+  return <DeliveryTracking orderId={id} />
 }
