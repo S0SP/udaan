@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase, COLLECTIONS } from '@/lib/mongodb';
 
-export async function GET(request: NextRequest, { params }: { params: { barcode: string } }) {
+export async function GET(request: NextRequest, context: { params: { barcode: string } }) {
+  const { params } = context;
   const { barcode } = params;
 
   if (!barcode) {
