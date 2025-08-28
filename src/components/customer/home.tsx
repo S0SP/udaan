@@ -14,11 +14,7 @@ import { OrderListUpload } from "./order-list-upload"
 import { useCart } from "@/hooks/use-cart"
 import { useToast } from "@/components/ui/use-toast"
 
-// We're declaring the global SpeechRecognition interfaces
-interface Window {
-  SpeechRecognition: any
-  webkitSpeechRecognition: any
-}
+// Use type assertion instead of global declaration to avoid conflicts
 
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList
@@ -171,7 +167,7 @@ export function CustomerHome() {
   const toggleListening = () => {
     if (!isListening) {
       try {
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)()
+        const recognition = new ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)()
         recognition.continuous = false
         recognition.interimResults = false
         recognition.lang = "en-US"
@@ -207,7 +203,7 @@ export function CustomerHome() {
         })
       }
     } else {
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)()
+      const recognition = new ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)()
       recognition.stop()
       setIsListening(false)
     }

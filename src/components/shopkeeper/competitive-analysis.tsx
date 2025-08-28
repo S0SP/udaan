@@ -19,7 +19,7 @@ import {
   Legend,
   ArcElement,
 } from "chart.js"
-import { Line, Bar, Pie } from "react-chartjs-2"
+import { Line, Bar, Pie, Chart } from "react-chartjs-2"
 
 // Register ChartJS components
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend)
@@ -356,7 +356,7 @@ export function CompetitiveAnalysis() {
                   </CardHeader>
                   <CardContent>
                     <div className="h-80">
-                      <Bar options={chartOptions} data={forecastData} />
+                      <Chart type="bar" options={chartOptions} data={forecastData as any} />
                     </div>
                   </CardContent>
                 </Card>

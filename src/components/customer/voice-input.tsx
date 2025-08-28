@@ -11,14 +11,6 @@ interface VoiceInputProps {
   className?: string
 }
 
-// Add TypeScript types for SpeechRecognition
-declare global {
-  interface Window {
-    SpeechRecognition: typeof SpeechRecognition
-    webkitSpeechRecognition: typeof SpeechRecognition
-  }
-}
-
 interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList
 }
@@ -80,29 +72,31 @@ export function VoiceInput({ onResult, placeholder = "Search products...", class
     let recognition: SpeechRecognition | null = null
 
     if (typeof window !== "undefined" && ("SpeechRecognition" in window || "webkitSpeechRecognition" in window)) {
-      recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)()
-      recognition.continuous = false
-      recognition.interimResults = false
-      recognition.lang = "en-US"
+      recognition = new ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)()
+      if (recognition) {
+        recognition.continuous = false
+        recognition.interimResults = false
+        recognition.lang = "en-US"
 
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        const transcript = event.results[0][0].transcript
-        onResult(transcript)
-        setIsListening(false)
-      }
+        recognition.onresult = (event: SpeechRecognitionEvent) => {
+          const transcript = event.results[0][0].transcript
+          onResult(transcript)
+          setIsListening(false)
+        }
 
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error("Speech recognition error:", event.error)
-        toast({
-          title: "Error",
-          description: "Could not recognize speech. Please try again.",
-          variant: "destructive",
-        })
-        setIsListening(false)
-      }
+        recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+          console.error("Speech recognition error:", event.error)
+          toast({
+            title: "Error",
+            description: "Could not recognize speech. Please try again.",
+            variant: "destructive",
+          })
+          setIsListening(false)
+        }
 
-      recognition.onend = () => {
-        setIsListening(false)
+        recognition.onend = () => {
+          setIsListening(false)
+        }
       }
     }
 
@@ -116,7 +110,7 @@ export function VoiceInput({ onResult, placeholder = "Search products...", class
   const toggleListening = () => {
     if (!isListening) {
       try {
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)()
+        const recognition = new ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)()
         recognition.start()
         setIsListening(true)
       } catch (error) {
@@ -128,7 +122,7 @@ export function VoiceInput({ onResult, placeholder = "Search products...", class
         })
       }
     } else {
-      const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)()
+      const recognition = new ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)()
       recognition.stop()
       setIsListening(false)
     }
