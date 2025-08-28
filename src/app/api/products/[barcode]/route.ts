@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { connectToDatabase, COLLECTIONS } from '@/lib/mongodb';
 
-export async function GET(request: NextRequest, context: { params: { barcode: string } }) {
-  const { params } = context;
-  const { barcode } = params;
+export async function GET(request: Request, context: { params: { barcode: string } }) {
+  const { barcode } = context.params;
 
   if (!barcode) {
     return NextResponse.json({ error: 'Barcode is required' }, { status: 400 });
